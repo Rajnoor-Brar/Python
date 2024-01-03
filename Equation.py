@@ -264,7 +264,7 @@ class Equation():
     
     def __neg__(self):
         answer=self.copy()
-        answer.coefficients=answer.coefficients*(-1)
+        answer.coefficients*=(-1)
         return answer
      
     def __str__(self) -> str:
