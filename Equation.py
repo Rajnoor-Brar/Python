@@ -1,7 +1,7 @@
 import numpy as np
 
 class Equation():
-    def __init__(self, dim:int=None, deg:int=None, coefficients:list="Manual", syms:list=None, name:str='f'):
+    def __init__(self, dim:int=None, deg:int=None, coefficients:list[float]="Manual", syms:list[str]=None, name:str='f'):
         
         if type(coefficients)==type([1,1]):
            # self.__class__.coeffCheck(coefficients)
@@ -9,14 +9,13 @@ class Equation():
             self.dimensions = self.coefficients.ndim
             if all(x==self.coefficients.shape[0] for x in self.coefficients.shape): self.degree=self.coefficients.shape[0]-1
             else: raise AttributeError("Coefficients must be a square matrix")
-            self.syms = self.symSetUp(syms)
+            self.syms = Equation.symSetUp(self.dimensions,syms)
         
         elif dim!=None and deg!=None:
-            self.degree = abs(int(deg))
-            self.dimensions = abs(int(dim))
+            self.dimensions = tuple(deg+1 for _ in range(dim))
+            self.degree=deg
             self.syms = Equation.symSetUp(self.dimensions,syms)
-            self.coefficients = np.zeros(shape=tuple(self.degree+1 for _ in range(self.dimensions)))
-            self.coeffSetUp()        
+            self.coefficients = Equation.coeffSetUp(self.dimensions,self.syms,deg)        
         
         else: raise AttributeError("Insuffcient Attributes provided for Equation Construction")   
         self.name=name
@@ -30,18 +29,6 @@ class Equation():
         dict["name"]=self.name
         return dict
                 
-    def coeffSetUp(self):
-        sp=self.__class__.sp
-        indices=list(x for x in np.ndindex(tuple(self.degree+1 for _ in range(self.dimensions))))
-        indices.reverse()
-        for index in indices:
-            if sum(index)<=self.degree:
-                string=""
-                for x in range(self.dimensions): string+= f"{self.syms[x]}{sp(index[x])}"
-                
-                self.coefficients[index] = float(input(string + " "))
-                if sum(index)>0:print(" + ", end="")
-
     def copy(self) -> "Equation":
         return Equation(coefficients=self.coefficients.tolist(),syms=self.syms.copy(),name=self.name)
 
@@ -50,7 +37,7 @@ class Equation():
         else: args=list(args)
         return self.f(args)
 
-    def f(self, fval:list) -> float:
+    def f(self, fval:list[float]) -> float:
         ans=0
         for index in np.ndindex(tuple(self.degree+1 for _ in range(self.dimensions))):
             if sum(index)<=self.degree:
@@ -141,13 +128,13 @@ class Equation():
                        other_coefficients=np.swapaxes(other_coefficients, j, i)
             
             if self.degree==other.degree:
-                coefficients=self.coefficients+other.coefficients
+                coefficients=self.coefficients-other.coefficients
             
             else: 
                 degree=max(self.degree,other.degree)
                 coefficients=np.zeros(shape=tuple(degree+1 for _ in range(self.dimensions)))
                 coefficients[tuple(slice(0,self.degree+1) for _ in self_syms)]+=self_coefficients
-                coefficients[tuple(slice(0,other.degree+1) for _ in other_syms)]+=other_coefficients
+                coefficients[tuple(slice(0,other.degree+1) for _ in other_syms)]-=other_coefficients
                 
         else:
             syms=self_syms+[x for x in other_syms if x not in self_syms]
@@ -235,7 +222,7 @@ class Equation():
             return answer
         else: raise TypeError("Divisor must be a number. Equation division is not yet supported")
 
-    def __rtruediv__(self,other) -> None:
+    def __rtruediv__(self,other:"Equation") -> None:
         raise TypeError("Cannot divide by an equation")
         
     def __pow__(self,power:int) -> "Equation":
@@ -319,9 +306,9 @@ class Equation():
         return "".join([dict[i] for i in str(int(ep))])
     
     @classmethod
-    def symSetUp(cls,dimensions:int,syms:list) -> list:
+    def symSetUp(cls,dimensions:int,syms:list[str]) -> list[str]:
         if syms==None:
-            return ["x","y","z","t","u","v","w","α","β","γ","ε","θ","κ","λ","μ","ρ","σ","φ"][:self.dimensions]
+            return ["x","y","z","t","u","v","w","α","β","γ","ε","θ","κ","λ","μ","ρ","σ","φ"][:dimensions]
         elif len(syms)==dimensions:
             return syms
         elif len(syms)>dimensions:
@@ -334,7 +321,7 @@ class Equation():
             return syms
     
     @classmethod
-    def rootCoeffs(cls, roots:list) -> list:
+    def rootCoeffs(cls, roots:list[float]) -> list[float]:
         # To expand factorised equation into coefficients: (x-1)(x-2) => x^2 - 3x + 2
         n=len(roots)
         coeffs=[0 for _ in range(n+1)]
@@ -349,6 +336,17 @@ class Equation():
         return coeffs
     
     @classmethod
-    def multirootCoeffs(cls,roots:list,syms:list) -> list:
-        dimensions=len(roots)
-        sym=Equation.symSetUp(dimensions,syms)
+    def coeffSetUp(cls,dimensions:int,syms:list[str],deg:int):
+        sp=Equation.sp
+        indices=list(x for x in np.ndindex(dimensions))
+        matrix=np.zeros(shape=dimensions)
+        indices.reverse()
+        for index in indices:
+            if sum(index)<=deg:
+                string=""
+                for x in range(len(dimensions)): string+= f"{syms[x]}{sp(index[x])}"
+                
+                matrix[index] = float(input(string + " "))
+                if sum(index)>0:print(" + ", end="")
+        return matrix
+
